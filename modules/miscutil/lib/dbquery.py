@@ -25,13 +25,12 @@ The main API functions are:
 but see the others as well.
 """
 
-__revision__ = "$Id$"
-
 # dbquery clients can import these from here:
 # pylint: disable=W0611
 from MySQLdb import (Warning, Error, InterfaceError, DataError,
                      DatabaseError, OperationalError, IntegrityError,
                      InternalError, NotSupportedError, ProgrammingError)
+# pylint: enable=W0611
 import gc
 import os
 import time
@@ -39,11 +38,15 @@ import marshal
 import re
 import atexit
 
+from contextlib import contextmanager
 from zlib import compress, decompress
+from collections import namedtuple
 from thread import get_ident
-from invenio.config import CFG_ACCESS_CONTROL_LEVEL_SITE, \
-    CFG_MISCUTIL_SQL_USE_SQLALCHEMY, \
-    CFG_MISCUTIL_SQL_RUN_SQL_MANY_LIMIT
+from invenio.config import (CFG_ACCESS_CONTROL_LEVEL_SITE,
+                            CFG_MISCUTIL_SQL_USE_SQLALCHEMY,
+                            CFG_MISCUTIL_SQL_RUN_SQL_MANY_LIMIT,
+                            CFG_PROFILE_DATABASE,
+                            CFG_PROFILE_DATABASE_TO_FILE)
 
 if CFG_MISCUTIL_SQL_USE_SQLALCHEMY:
     import sqlalchemy.pool as pool
@@ -70,6 +73,10 @@ from invenio.dbquery_config import (CFG_DATABASE_HOST,
                                     CFG_DATABASE_SLAVE_SU_USER,
                                     CFG_DATABASE_SLAVE_SU_PASS,
                                     CFG_DATABASE_PASSWORD_FILE)
+
+
+Query = namedtuple('Query', ('dbhost', 'sql', 'param', 'duration'))
+QUERIES = []
 
 
 def _get_password_from_database_password_file(user):
@@ -231,13 +238,15 @@ def run_sql(sql, param=None, n=0, with_desc=False, with_dict=False, run_on_slave
     if run_on_slave and CFG_DATABASE_SLAVE:
         dbhost = CFG_DATABASE_SLAVE
 
-    # log_sql_query(dbhost, sql, param) ### UNCOMMENT ONLY IF you REALLY want
-    # to log all queries
+    if CFG_PROFILE_DATABASE_TO_FILE:
+        log_sql_query_to_file(dbhost, sql, param)
+
     try:
         db = connection or _db_login(dbhost)
         cur = db.cursor()
         gc.disable()
-        rc = cur.execute(sql, param)
+        with profile_query(dbhost, sql, param):
+            rc = cur.execute(sql, param)
         gc.enable()
     # unexpected disconnect, bad malloc error, etc
     except (OperationalError, InterfaceError):
@@ -248,7 +257,8 @@ def run_sql(sql, param=None, n=0, with_desc=False, with_dict=False, run_on_slave
         db = _db_login(dbhost, relogin=1)
         cur = db.cursor()
         gc.disable()
-        rc = cur.execute(sql, param)
+        with profile_query(dbhost, sql, param):
+            rc = cur.execute(sql, param)
         gc.enable()
 
     if sql.split()[0].upper() in ("SELECT", "SHOW", "DESC", "DESCRIBE"):
@@ -361,7 +371,14 @@ def blob_to_string(ablob):
         return ablob
 
 
-def log_sql_query(dbhost, sql, param=None):
+def log_sql_query_to_memory(dbhost, sql, param, duration):
+    QUERIES.append(Query(dbhost=dbhost,
+                         sql=sql,
+                         param=param,
+                         duration=duration))
+
+
+def log_sql_query_to_file(dbhost, sql, param=None):
     """Log SQL query into prefix/var/log/dbquery.log log file.  In order
        to enable logging of all SQL queries, please uncomment one line
        in run_sql() above. Useful for fine-level debugging only!
@@ -490,3 +507,14 @@ def real_escape_string(unescaped_string, run_on_slave=False):
     connection_object = _db_login(dbhost)
     escaped_string = connection_object.escape_string(unescaped_string)
     return escaped_string
+
+
+@contextmanager
+def profile_query(dbhost, sql, param):
+    if CFG_PROFILE_DATABASE:
+        start_time = time.clock()
+        yield
+        duration = time.clock() - start_time
+        log_sql_query_to_memory(dbhost, sql, param, duration)
+    else:
+        yield

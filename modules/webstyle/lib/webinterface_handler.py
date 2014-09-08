@@ -52,6 +52,7 @@ from invenio.webinterface_handler_wsgi_utils import StringField
 from invenio.session import get_session
 from invenio import web_api_key
 from invenio.access_control_engine import acc_authorize_action
+from invenio.dbquery import QUERIES
 
 
 ## The following variable is True if the installation make any difference
@@ -358,6 +359,7 @@ def create_handler(root):
             profile_dump += '\nYou can use profile=%s or profile=memory' % existing_sorts
             if req.content_type == 'text/html':
                 req.write("\n<pre>%s</pre>" % profile_dump)
+                flush_sql_queries(req)
             return ret
         elif 'debug' in args and args['debug']:
             #remote_debugger.start(["3"]) # example starting debugger on demand
@@ -550,3 +552,12 @@ def wash_urlargd(form, content):
     result['ln'] = wash_language(result['ln'])
 
     return result
+
+
+def flush_sql_queries(req):
+    req.write("<table><tr><th>SQL</th><th>Parameters</th><th>Duration (ms)</th></tr>")
+    for query in QUERIES:
+        duration = round(1000 * query.duration, 2)
+        req.write("<tr><td>%s</td><td>%s</td><td>%s</td></tr>" % (query.sql, query.param, duration))
+    req.write("</table>")
+    del QUERIES[:]
