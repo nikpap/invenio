@@ -109,15 +109,6 @@ def get_connection_for_dump_on_slave():
     return connection
 
 
-def unlock_all():
-    for dbhost in _DB_CONN.keys():
-        for db in _DB_CONN[dbhost].values():
-            cur = db.cur()
-            cur.execute("UNLOCK TABLES")
-
-atexit.register(unlock_all)
-
-
 class InvenioDbQueryWildcardLimitError(Exception):
 
     """Exception raised when query limit reached."""
