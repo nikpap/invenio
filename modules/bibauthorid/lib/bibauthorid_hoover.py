@@ -57,7 +57,7 @@ class HooverStats(object):
         log = ("Tickets raised: {0} "
                "New identifiers found: {1} "
                "Connections to hepnames performed: {2} "
-               "Signatures attempted to move: {3}").format(cls.tickets_raised, 
+               "Signatures attempted to move: {3}").format(cls.tickets_raised,
                        cls.new_ids_found, cls.connections_to_hepnames, cls.move_signature_calls)
         write_message(log, verbose=4)
         return (cls.tickets_raised, cls.new_ids_found, cls.connections_to_hepnames, cls.move_signature_calls)
@@ -329,7 +329,7 @@ class Vacuumer(object):
                 new_pid = get_free_author_id()
                 write_message(
                     ("Moving  conflicting signature {0} from pid {1}"
-                    " to pid {2}".format(duplicated_signatures[0], 
+                    " to pid {2}".format(duplicated_signatures[0],
                         self.pid,new_pid)),
                     verbose=3)
                 HooverStats.move_signature_calls += 1
@@ -382,7 +382,7 @@ def get_records_with_tag(tag):
              ))
 
 
-def get_inspireID_from_claimed_papers(pid, intersection_set=None):
+def get_inspireID_from_claimed_papers(pid, intersection_set=None, queue='Test'):
     """returns the inspireID found inside the claimed papers of the author.
     This happens only in case all the inspireIDs are the same,
     if there is  a conflict in the inspireIDs of the papers the
@@ -406,7 +406,8 @@ def get_inspireID_from_claimed_papers(pid, intersection_set=None):
         if inspireid:
             if len(inspireid) > 1:
                 open_rt_ticket(ConflictingIdsOnRecordException(
-                    'Conflicting ids found', pid, 'INSPIREID', inspireid, sig))
+                    'Conflicting ids found', pid, 'INSPIREID', inspireid, sig),
+                    queue=queue)
                 return None
 
             inspireid_list.append(inspireid[0])
@@ -425,7 +426,7 @@ def get_inspireID_from_claimed_papers(pid, intersection_set=None):
             inspireid_list)
 
 
-def get_inspireID_from_unclaimed_papers(pid, intersection_set=None):
+def get_inspireID_from_unclaimed_papers(pid, intersection_set=None, queue='Test'):
     """returns the inspireID found inside the unclaimed papers of the author.
     This happens only in case all the inspireIDs are the same,
     if there is  a conflict in the inspireIDs of the papers the
@@ -450,7 +451,8 @@ def get_inspireID_from_unclaimed_papers(pid, intersection_set=None):
         if inspireid:
             if len(inspireid) > 1:
                 open_rt_ticket(ConflictingIdsOnRecordException(
-                    'Conflicting ids found', pid, 'INSPIREID', inspireid, sig))
+                    'Conflicting ids found', pid, 'INSPIREID', inspireid, sig),
+                    queue=queue)
                 return None
 
             inspireid_list.append(inspireid[0])
@@ -527,10 +529,10 @@ def hoover(authors=None, check_db_consistency=False, dry_run=False,
             'reliable': [get_inspire_id_of_author,
                          get_inspireID_from_hepnames,
                          lambda pid: get_inspireID_from_claimed_papers(
-                             pid, intersection_set=records_with_id)],
+                             pid, intersection_set=records_with_id, queue=queue)],
 
             'unreliable': [lambda pid: get_inspireID_from_unclaimed_papers(
-                           pid, intersection_set=records_with_id)],
+                           pid, intersection_set=records_with_id, queue=queue)],
             'signatures_getter': get_signatures_with_inspireID,
             'connection': dict_entry_for_hepnames_connector,
             'data_dicts': {
