@@ -1,6 +1,6 @@
 /*
  * This file is part of Invenio.
- * Copyright (C) 2014 CERN.
+ * Copyright (C) 2014, 2015 CERN.
  *
  * Invenio is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -17,7 +17,6 @@
  * 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
  */
 
-'use strict';
 
 define(
   [
@@ -29,6 +28,8 @@ define(
     $,
     defineComponent,
     Prism) {
+
+    "use strict";
 
     return defineComponent(DetailsPreview);
 
@@ -82,7 +83,7 @@ define(
       };
 
       this.after('initialize', function() {
-        this.on(document, "setPreviewByFormat", this.renderPreviewByFormat)
+        this.on(document, "setPreviewByFormat", this.renderPreviewByFormat);
         console.log("Details init");
       });
     }

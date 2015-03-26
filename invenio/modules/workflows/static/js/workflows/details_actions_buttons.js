@@ -1,6 +1,6 @@
 /*
  * This file is part of Invenio.
- * Copyright (C) 2014, 2015 CERN.
+ * Copyright (C) 2015 CERN.
  *
  * Invenio is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -17,7 +17,6 @@
  * 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
  */
 
-
 define(
   [
     'jquery',
@@ -27,32 +26,32 @@ define(
     $,
     defineComponent) {
 
-    "use strict";
+    'use strict';
 
-    return defineComponent(DetailsPreviewMenu);
+    return defineComponent(DetailsActionsButtons);
 
     /**
-    * .. js:class:: DetailsPreviewMenu()
+    * .. js:class:: DetailsActionsButtons()
     *
-    * UI component for handling the preview menu buttons for the object data.
+    * UI component for handling the buttons for restarting/deleting an object.
     *
-    * :param string previewMenuItemSelector: DOM selector for each menu item
+    * :param string actionButtonSelector: DOM selector for a button
     *
     */
-    function DetailsPreviewMenu() {
+    function DetailsActionsButtons() {
       this.attributes({
-        previewMenuItemSelector: ".preview"
+        actionButtonSelector: ".details-action"
       });
 
-      this.setPreviewByFormat = function(ev, data) {
-        this.trigger(document, "setPreviewByFormat", {
-          format: data.el.name,
+      this.triggerActionButton = function(ev, data) {
+        this.trigger(document, "detailsButtonClick", {
+          action: $(data.el).data("action"),
         });
       };
 
       this.after('initialize', function() {
         this.on("click", {
-          previewMenuItemSelector: this.setPreviewByFormat,
+          actionButtonSelector: this.triggerActionButton,
         });
         console.log("Details preview menu init");
       });

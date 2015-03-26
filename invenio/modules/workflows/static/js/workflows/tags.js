@@ -1,6 +1,6 @@
 /*
  * This file is part of Invenio.
- * Copyright (C) 2014 CERN.
+ * Copyright (C) 2014, 2015 CERN.
  *
  * Invenio is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -17,7 +17,6 @@
  * 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
  */
 
-'use strict';
 
 define(
   [
@@ -27,6 +26,8 @@ define(
   function(
     $,
     defineComponent) {
+
+    "use strict";
 
     return defineComponent(HoldingPenTags);
 
@@ -75,32 +76,32 @@ define(
         this.attr.tags.map(function(item) {
           $node.tagsinput('add', item);
         });
-      }
+      };
 
       this.addTagFromMenu = function(ev, data) {
         // Tagsinput already deal with existing tags.
         this.$node.tagsinput('add', data);
-      }
+      };
 
       this.addTagFromFreetext = function(ev) {
         // ev.item is the freeinput text
-        if (ev.item.length != 0){
+        if (ev.item.length !== 0){
           ev.item = {text: ev.item, value: ev.item};
           ev.cancel = false;
         }
-      }
+      };
 
       this.onTagsUpdate = function() {
         // Extract first only the "real" value (ignore translated ones)
         var tags = this.$node.tagsinput("items").map(function(currentValue, index, array) {
           return currentValue.value;
-        })
+        });
 
         var data = {
           'tags': tags
         };
         this.trigger(document, "reloadHoldingPenTable", data);
-      }
+      };
 
 
       this.after('initialize', function() {

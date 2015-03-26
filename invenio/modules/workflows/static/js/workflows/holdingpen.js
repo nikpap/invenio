@@ -17,7 +17,6 @@
  * 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
  */
 
-'use strict';
 
 define(
   [
@@ -30,6 +29,8 @@ define(
   function(
     $,
     defineComponent) {
+
+    "use strict";
 
     return defineComponent(HoldingPen);
 
@@ -79,12 +80,12 @@ define(
 
       this.init_datatables = function(ev, data) {
         // DataTables ajax settings
-        this.attr.oSettings["sAjaxSource"] = this.attr.load_url;
+        this.attr.oSettings.sAjaxSource = this.attr.load_url;
         this.$node.DataTable(this.attr.oSettings);
         // Bootstrap TableTools
         var tt = $.fn.dataTable.TableTools.fnGetInstance(this.$node.attr("id"));
         $(tt.fnContainer()).insertBefore('div.dataTables_wrapper');
-      }
+      };
 
       this.reloadTable = function (ev, data) {
         var $node = this.$node;
@@ -103,11 +104,11 @@ define(
       this.holdingPenKeyCodes = function(ev) {
         var keycodes = {
           escape: 27,
-        }
+        };
 
         console.log(ev.keyCode);
         console.log(keycodes.escape);
-      }
+      };
 
       this.after('initialize', function() {
         this.on(document, "initHoldingPenTable", this.init_datatables);

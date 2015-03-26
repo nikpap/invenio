@@ -1,6 +1,6 @@
 /*
  * This file is part of Invenio.
- * Copyright (C) 2014, 2015 CERN.
+ * Copyright (C) 2015 CERN.
  *
  * Invenio is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -22,39 +22,42 @@ define(
   [
     'jquery',
     'flight/lib/component',
+    'hgn!js/workflows/templates/alert'
   ],
   function(
     $,
-    defineComponent) {
+    defineComponent,
+    tpl_alert) {
 
     "use strict";
 
-    return defineComponent(DetailsPreviewMenu);
+    return defineComponent(HoldingPenCommon);
 
     /**
-    * .. js:class:: DetailsPreviewMenu()
+    * .. js:class:: HoldingPenCommon()
     *
-    * UI component for handling the preview menu buttons for the object data.
+    * Common utilities throughout Holding Pen.
     *
-    * :param string previewMenuItemSelector: DOM selector for each menu item
+    * :param string alertSelector:
     *
     */
-    function DetailsPreviewMenu() {
+    function HoldingPenCommon() {
       this.attributes({
-        previewMenuItemSelector: ".preview"
+        // URL
+        alertSelector: "#alert-message",
       });
 
-      this.setPreviewByFormat = function(ev, data) {
-        this.trigger(document, "setPreviewByFormat", {
-          format: data.el.name,
-        });
+      this.setAlertMessage = function (ev, data) {
+        $(this.attr.alertSelector).append(tpl_alert({
+          category: data.category,
+          message: data.message
+        }));
       };
 
       this.after('initialize', function() {
-        this.on("click", {
-          previewMenuItemSelector: this.setPreviewByFormat,
-        });
-        console.log("Details preview menu init");
+        this.on(document, "updateAlertMessage", this.setAlertMessage);
+        console.log("Common init");
       });
     }
-});
+  }
+);
