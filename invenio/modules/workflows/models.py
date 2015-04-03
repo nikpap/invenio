@@ -574,7 +574,7 @@ class BibWorkflowObject(db.Model):
     def get_action_message(self):
         """Retrieve the currently assigned widget, if any."""
         try:
-            return self.get_extra_data()["_message"]
+            return unicode(self.get_extra_data()["_message"])
         except KeyError:
             # No widget
             return ""
@@ -688,6 +688,20 @@ class BibWorkflowObject(db.Model):
         except KeyError:
             # Assume old version "task_counter"
             return extra_data["task_counter"]
+
+    def get_current_task_info(self):
+        """Return a dictionary of current task function info for this object."""
+        from .utils import get_workflow_definition, get_func_info
+
+        task_pointer = self.get_current_task()
+        name = self.get_workflow_name()
+        if not name:
+            return ""
+        current_task = get_workflow_definition(name)
+        for step in task_pointer:
+            current_task = current_task[step]
+            if callable(current_task):
+                return get_func_info(current_task)
 
     def save_to_file(self, directory=None,
                      prefix="workflow_object_data_", suffix=".obj"):

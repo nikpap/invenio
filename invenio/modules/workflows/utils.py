@@ -459,7 +459,7 @@ def get_previous_next_objects(object_list, current_object_id):
 def get_func_info(func):
     """Retrieve a function's information."""
     name = func.func_name
-    doc = func.func_doc
+    doc = func.func_doc or ""
     try:
         nicename = func.description
     except AttributeError:
@@ -474,12 +474,12 @@ def get_func_info(func):
     varnames = func.func_code.co_freevars
     if closure:
         for index, arg in enumerate(closure):
-            parameters.append((str(varnames[index]), str(arg.cell_contents)))
+            parameters.append((unicode(varnames[index]), unicode(arg.cell_contents)))
     return {
-        "nicename": nicename,
-        "doc": doc,
+        "nicename": nicename.decode("utf-8"),
+        "doc": doc.decode("utf-8"),
         "parameters": parameters,
-        "name": name
+        "name": name.decode("utf-8")
     }
 
 
