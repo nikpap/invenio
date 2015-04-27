@@ -173,7 +173,12 @@ def setup_app(app):
     @app.template_filter('sentences')
     def _sentences(value, limit, separator='. '):
         """Return first `limit` number of sentences ending by `separator`."""
-        return separator.join(value.split(separator)[:limit])
+        return separator.join(value.split(separator)[:limit]) + separator
+
+    @app.template_filter('sentences_to_end')
+    def _sentences(value, limit, separator='. '):
+        """Return first `limit` number of sentences ending by `separator`."""
+        return separator.join(value.split(separator)[limit:])
 
     @app.template_filter('path_join')
     def _os_path_join(d):
