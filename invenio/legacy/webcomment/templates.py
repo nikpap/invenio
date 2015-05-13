@@ -2208,27 +2208,7 @@ class Template:
         else:
             s1, s2, s3, s4, s5 = '', '', '', '', ''
 
-        out = '''
-<small class="detailedRecordActions">%(rate)s:</small><br /><br />
-<div style="margin:auto;width:160px;">
-<span style="display:none;">Rate this document:</span>
-<div class="star %(s1)s" ><a href="%(url)s&amp;score=1">1</a>
-<div class="star %(s2)s" ><a href="%(url)s&amp;score=2">2</a>
-<div class="star %(s3)s" ><a href="%(url)s&amp;score=3">3</a>
-<div class="star %(s4)s" ><a href="%(url)s&amp;score=4">4</a>
-<div class="star %(s5)s" ><a href="%(url)s&amp;score=5">5</a></div></div></div></div></div>
-<div style="clear:both">&nbsp;</div>
-</div>
-<small>%(score)s</small>
-''' % {'url': url,
-        'score': score,
-        'rate': _("Rate this document"),
-        's1': s1,
-        's2': s2,
-        's3': s3,
-        's4': s4,
-        's5': s5
-        }
+        out = ''
         return out
 
     def tmpl_email_new_comment_header(self, recID, title, reviews,
