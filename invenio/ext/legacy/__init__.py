@@ -26,35 +26,41 @@ import sys
 from flask import (abort, current_app, g, render_template, request,
                    send_from_directory, url_for)
 from flask_admin.menu import MenuLink
-
-from invenio.base import signals
-from invenio.base.scripts.database import create, recreate
-
 from werkzeug.exceptions import HTTPException
 from werkzeug.wrappers import BaseResponse
 
 from .request_class import LegacyRequest
+from invenio.base import signals
+from invenio.base.scripts.database import create, recreate
+from invenio.base.utils import run_py_func
 
 
 def cli_cmd_reset(sender, yes_i_know=False, drop=True, **kwargs):
     """Reset legacy values."""
-    from invenio.config import CFG_PREFIX
-    from invenio.base.scripts.config import get_conf
+    from invenio.ext.sqlalchemy import db
+    from invenio.modules.accounts.models import User
     # from invenio.legacy.inveniocfg import cli_cmd_reset_sitename
-    from invenio.legacy.inveniocfg import cli_cmd_reset_siteadminemail
     # from invenio.legacy.inveniocfg import cli_cmd_reset_fieldnames
+    from invenio.legacy.bibsort.daemon import main as bibsort
+    from invenio.modules.access.scripts.webaccessadmin import main as \
+        webaccessadmin
 
-    conf = get_conf()
     # FIXME refactor fixtures so these calls are not needed
     # cli_cmd_reset_sitename(conf)
-    cli_cmd_reset_siteadminemail(conf)
+    User.query.filter_by(id=1).delete()
+    siteadminemail = current_app.config.get('CFG_SITE_ADMIN_EMAIL')
+    u = User(id=1, email=siteadminemail, password='', note=1, nickname='admin')
+    db.session.add(u)
+    db.session.commit()
     # cli_cmd_reset_fieldnames(conf)
 
-    for cmd in ["%s/bin/webaccessadmin -u admin -c -a -D" % CFG_PREFIX,
-                "%s/bin/bibsort -u admin --load-config" % CFG_PREFIX,
-                "%s/bin/bibsort 1" % CFG_PREFIX, ]:
-        if os.system(cmd):
-            print("ERROR: failed execution of", cmd)
+    for cmd in (
+        (webaccessadmin, "webaccessadmin -u admin -c -a -D"),
+        (bibsort, "bibsort -u admin --load-config"),
+        (bibsort, "bibsort 1"),
+    ):
+        if run_py_func(*cmd, passthrough=True).exit_code:
+            print("ERROR: failed execution of", *cmd)
             sys.exit(1)
 
 signals.post_command.connect(cli_cmd_reset, sender=create)

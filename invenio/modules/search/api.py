@@ -20,15 +20,13 @@
 """Search engine API."""
 
 import pypeg2
-import six
 
 from flask_login import current_user
-from werkzeug.utils import cached_property, import_string
+from werkzeug.utils import cached_property
 
-from invenio.base.globals import cfg
-
-from .walkers.terms import Terms
+from .utils import parser, query_enhancers, query_walkers, search_walkers
 from .walkers.match_unit import MatchUnit
+from .walkers.terms import Terms
 
 
 class SearchEngine(object):
@@ -40,27 +38,25 @@ class SearchEngine(object):
         self._query = query
 
     @cached_property
-    def parser(self):
-        query_parser = cfg['SEARCH_QUERY_PARSER']
-        if isinstance(query_parser, six.string_types):
-            query_parser = import_string(query_parser)
-        return query_parser
-
-    @cached_property
     def query(self):
         """Parse query string using given grammar."""
-        tree = pypeg2.parse(self._query, self.parser, whitespace="")
-        for walker in cfg['SEARCH_QUERY_WALKERS']:
-            if isinstance(walker, six.string_types):
-                walker = import_string(walker)
-            tree = tree.accept(walker())
+        tree = pypeg2.parse(self._query, parser(), whitespace="")
+        for walker in query_walkers():
+            tree = tree.accept(walker)
         return tree
 
     def search(self, user_info=None, collection=None):
         """Search records."""
         user_info = user_info or current_user
-        from .searchext.engines.native import search
-        return search(self, user_info=user_info, collection=collection)
+        # Enhance query first
+        query = self.query
+        for enhancer in query_enhancers():
+            query = enhancer(query, user_info=user_info,
+                             collection=collection)
+
+        for walker in search_walkers():
+            query = query.accept(walker)
+        return query
 
     def match(self, record, user_info=None):
         """Return True if record match the query."""

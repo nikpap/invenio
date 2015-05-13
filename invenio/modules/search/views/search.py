@@ -41,39 +41,38 @@ Template hierarchy.
 """
 
 import cStringIO
-import functools
-import json
+import datetime
 import string
+import time
 
-from flask import make_response, g, request, flash, jsonify, \
-    redirect, url_for, current_app, abort, session, Blueprint, \
-    render_template
-from flask_breadcrumbs import \
-    register_breadcrumb, current_breadcrumbs, default_breadcrumb_root
-from flask_login import current_user
 from math import ceil
+
+from flask import (Blueprint, abort, current_app, flash, g, jsonify,
+                   make_response, redirect, render_template, request, session,
+                   url_for)
+from flask_breadcrumbs import (current_breadcrumbs, default_breadcrumb_root,
+                               register_breadcrumb)
+from flask_login import current_user
 from six import iteritems
+from werkzeug.http import http_date
 from werkzeug.local import LocalProxy
 
-from invenio.base.decorators import wash_arguments, templated
+from invenio.base.decorators import templated, wash_arguments
 from invenio.base.i18n import _
 from invenio.base.signals import websearch_before_browse
-from invenio.modules.indexer.models import IdxINDEX
 from invenio.ext.template.context_processor import \
     register_template_context_processor
-from invenio.utils.pagination import Pagination
-from invenio.modules.search.registry import facets
 from invenio.modules.collections.decorators import check_collection
+from invenio.modules.indexer.models import IdxINDEX
+from invenio.modules.search.registry import facets
+from invenio.utils.pagination import Pagination
 
 from .. import receivers
 from ..api import SearchEngine
-from ..cache import get_search_query_id, get_collection_name_from_cache
-from ..facet_builders import get_current_user_records_that_can_be_displayed, \
-    faceted_results_filter
+from ..cache import get_search_query_id
 from ..forms import EasySearchForm
 from ..models import Field
 from ..washers import wash_search_urlargd
-
 
 blueprint = Blueprint('search', __name__, url_prefix="",
                       template_folder='../templates',
@@ -106,12 +105,37 @@ def min_length(length, code=406):
 
 
 def response_formated_records(recids, collection, of, **kwargs):
-    """TODO."""
+    """Return formatter records.
+
+    Response contains correct Cache and TTL information in HTTP headers.
+    """
     from invenio.modules.formatter import (get_output_format_content_type,
                                            print_records)
     response = make_response(print_records(recids, collection=collection,
                                            of=of, **kwargs))
     response.mimetype = get_output_format_content_type(of)
+    current_time = datetime.datetime.now()
+    response.headers['Last-Modified'] = http_date(
+        time.mktime(current_time.timetuple())
+    )
+    expires = current_app.config.get(
+        'CFG_WEBSEARCH_SEARCH_CACHE_TIMEOUT', None)
+
+    if expires is None:
+        response.headers['Cache-Control'] = (
+            'no-store, no-cache, must-revalidate, '
+            'post-check=0, pre-check=0, max-age=0'
+        )
+        response.headers['Expires'] = '-1'
+    else:
+        expires_time = current_time + datetime.timedelta(seconds=expires)
+        response.headers['Vary'] = 'Accept'
+        response.headers['Cache-Control'] = (
+            'public' if current_user.is_guest else 'private'
+        )
+        response.headers['Expires'] = http_date(time.mktime(
+            expires_time.timetuple()
+        ))
     return response
 
 
@@ -296,7 +320,7 @@ def rss(collection, p, jrec, so, rm):
     recids = searcher.search(collection=collection.name)
 
     ctx = dict(
-        records=len(get_current_user_records_that_can_be_displayed(qid)),
+        records=len(recids),
         qid=qid,
         rg=rg
     )

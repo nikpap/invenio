@@ -16,6 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Invenio; if not, write to the Free Software Foundation, Inc.,
 # 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
+
 """
 Holding Pen is a web interface overlay for all BibWorkflowObject's.
 
@@ -25,6 +26,8 @@ with halted workflows.
 
 For example, accepting submissions or other tasks.
 """
+
+from __future__ import unicode_literals
 
 import json
 import os
@@ -54,12 +57,16 @@ from ..acl import viewholdingpen
 from ..api import continue_oid_delayed, start_delayed
 from ..models import BibWorkflowObject, ObjectVersion, Workflow
 from ..registry import actions, workflows
-from ..utils import (extract_data, get_action_list,
-                     get_formatted_holdingpen_object,
-                     get_holdingpen_objects,
-                     get_previous_next_objects,
-                     get_rendered_task_results,
-                     sort_bwolist)
+from ..utils import (
+    alert_response_wrapper,
+    extract_data,
+    get_action_list,
+    get_formatted_holdingpen_object,
+    get_holdingpen_objects,
+    get_previous_next_objects,
+    get_rendered_task_results,
+    sort_bwolist,
+)
 
 blueprint = Blueprint('holdingpen', __name__, url_prefix="/admin/holdingpen",
                       template_folder='../templates',
@@ -145,8 +152,9 @@ def maintable():
                 tags=json.dumps(tags_to_print))
 
 
+@blueprint.route('/<int:objectid>', methods=['GET', 'POST'])
 @blueprint.route('/details/<int:objectid>', methods=['GET', 'POST'])
-@register_breadcrumb(blueprint, '.details', _("Record Details"))
+@register_breadcrumb(blueprint, '.details', _("Object Details"))
 @login_required
 @permission_required(viewholdingpen.name)
 def details(objectid):
@@ -196,7 +204,6 @@ def details(objectid):
         obj._class = HOLDINGPEN_WORKFLOW_STATES[obj.version]["class"]
         obj.message = HOLDINGPEN_WORKFLOW_STATES[obj.version]["message"]
     results = get_rendered_task_results(bwobject)
-
     workflow_definition = get_workflow_info(extracted_data['workflow_func'])
     task_history = bwobject.get_extra_data().get('_task_history', [])
     return render_template('workflows/details.html',
@@ -249,6 +256,7 @@ def get_file_from_task_result(object_id=None, filename=None):
 @login_required
 @permission_required(viewholdingpen.name)
 @wash_arguments({'objectid': (int, 0)})
+@alert_response_wrapper
 def restart_record(objectid, start_point='continue_next'):
     """Restart the initial object in its workflow."""
     bwobject = BibWorkflowObject.query.get_or_404(objectid)
@@ -257,51 +265,69 @@ def restart_record(objectid, start_point='continue_next'):
         Workflow.uuid == bwobject.id_workflow).first()
 
     start_delayed(workflow.name, [bwobject.get_data()])
-    return 'Record Restarted'
+    return jsonify(dict(
+        category="success",
+        message=_("Object restarted successfully.")
+    ))
 
 
 @blueprint.route('/continue_record', methods=['GET', 'POST'])
 @login_required
 @permission_required(viewholdingpen.name)
 @wash_arguments({'objectid': (int, 0)})
+@alert_response_wrapper
 def continue_record(objectid):
     """Continue workflow for current object."""
     continue_oid_delayed(oid=objectid, start_point='continue_next')
-    return 'Record continued workflow'
+    return jsonify(dict(
+        category="success",
+        message=_("Object continued with next task successfully.")
+    ))
 
 
 @blueprint.route('/restart_record_prev', methods=['GET', 'POST'])
 @login_required
 @permission_required(viewholdingpen.name)
 @wash_arguments({'objectid': (int, 0)})
+@alert_response_wrapper
 def restart_record_prev(objectid):
     """Restart the last task for current object."""
     continue_oid_delayed(oid=objectid, start_point="restart_task")
-    return 'Record restarted current task'
+    return jsonify(dict(
+        category="success",
+        message=_("Object restarted task successfully.")
+    ))
 
 
 @blueprint.route('/delete', methods=['GET', 'POST'])
 @login_required
 @permission_required(viewholdingpen.name)
 @wash_arguments({'objectid': (int, 0)})
+@alert_response_wrapper
 def delete_from_db(objectid):
     """Delete the object from the db."""
     BibWorkflowObject.delete(objectid)
-    return 'Record Deleted'
+    return jsonify(dict(
+        category="success",
+        message=_("Object deleted successfully.")
+    ))
 
 
 @blueprint.route('/delete_multi', methods=['GET', 'POST'])
 @login_required
 @permission_required(viewholdingpen.name)
 @wash_arguments({'bwolist': (text_type, "")})
+@alert_response_wrapper
 def delete_multi(bwolist):
     """Delete list of objects from the db."""
     from ..utils import parse_bwids
-
     bwolist = parse_bwids(bwolist)
     for objectid in bwolist:
         delete_from_db(objectid)
-    return 'Records Deleted'
+    return jsonify(dict(
+        category="success",
+        message=_("Objects deleted successfully.")
+    ))
 
 
 @blueprint.route('/resolve', methods=['GET', 'POST'])

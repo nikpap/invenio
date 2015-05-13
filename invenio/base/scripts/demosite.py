@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2013, 2014 CERN.
+# Copyright (C) 2013, 2014, 2015 CERN.
 #
 # Invenio is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -21,19 +21,23 @@
 
 from __future__ import print_function
 
+import os
+import sys
 import warnings
+from itertools import count
+
+import pkg_resources
+
+from invenio.base.utils import run_py_func
+from invenio.ext.script import Manager
+
 
 warnings.warn("Use of `inveniomanage demosite populate` is being deprecated. "
               "Please use `uploader` module to insert demo records.",
               PendingDeprecationWarning)
 
-import os
-import pkg_resources
-import sys
 
-from itertools import count
 
-from invenio.ext.script import Manager
 
 manager = Manager(usage=__doc__)
 
@@ -68,6 +72,15 @@ def populate(packages=[], default_data=True, files=None,
     """Load demo records.  Useful for testing purposes."""
     from invenio.utils.text import wrap_text_in_a_box, wait_for_user
 
+    # Load cli interfaces for tools that we are going to need
+    from invenio.legacy.bibupload.engine import main as bibupload
+    from invenio.legacy.bibindex.engine import main as bibindex
+    from invenio.legacy.bibformat.bibreformat import main as bibreformat
+    from invenio.legacy.oairepository.updater import main as oairepositoryupdater
+    from invenio.legacy.bibsort.daemon import main as bibsort
+    from invenio.legacy.bibdocfile.cli import main as bibdocfile
+    from invenio.legacy.bibrank.cli import main as bibrank
+
     ## Step 0: confirm deletion
     wait_for_user(wrap_text_in_a_box(
         "WARNING: You are going to override data in tables!"
@@ -80,7 +93,6 @@ def populate(packages=[], default_data=True, files=None,
         packages = ['invenio_demosite.base']
 
     from werkzeug.utils import import_string
-    from invenio.config import CFG_PREFIX
     map(import_string, packages)
 
     from invenio.ext.sqlalchemy import db
@@ -98,29 +110,32 @@ def populate(packages=[], default_data=True, files=None,
         bibupload_flags = '-i -r --force'
     for f in files:
         job_id += 1
-        for cmd in ["%s/bin/bibupload -u admin %s %s" % (CFG_PREFIX, bibupload_flags, f),
-                    "%s/bin/bibupload %d" % (CFG_PREFIX, job_id)]:
-            if os.system(cmd):
-                print("ERROR: failed execution of", cmd)
+        for cmd in (
+            (bibupload, "bibupload -u admin %s %s" % (bibupload_flags, f)),
+            (bibupload, "bibupload %d" % (job_id))
+        ):
+            if run_py_func(*cmd, passthrough=True).exit_code:
+                print("ERROR: failed execution of", *cmd)
                 sys.exit(1)
 
-    i = count(1).next
-    for cmd in ["bin/bibdocfile --textify --with-ocr --recid 97",
-                "bin/bibdocfile --textify --all",
-                "bin/bibindex -u admin",
-                "bin/bibindex %d" % (job_id + i(),),
-                "bin/bibindex -u admin -w global",
-                "bin/bibindex %d" % (job_id + i(),),
-                "bin/bibrank -u admin",
-                "bin/bibrank %d" % (job_id + i(),),
-                "bin/bibsort -u admin -R",
-                "bin/bibsort %d" % (job_id + i(),),
-                "bin/oairepositoryupdater -u admin",
-                "bin/oairepositoryupdater %d" % (job_id + i(),),
-                "bin/bibupload %d" % (job_id + i(),)]:
-        cmd = os.path.join(CFG_PREFIX, cmd)
-        if os.system(cmd):
-            print("ERROR: failed execution of", cmd)
+    i = count(job_id + 1).next
+    for cmd in (
+        (bibdocfile, "bibdocfile --textify --with-ocr --recid 97"),
+        (bibdocfile, "bibdocfile --textify --all"),
+        (bibindex, "bibindex -u admin"),
+        (bibindex, "bibindex %d" % i()),
+        (bibindex, "bibindex -u admin -w global"),
+        (bibindex, "bibindex %d" % i()),
+        (bibrank, "bibrank -u admin"),
+        (bibrank, "bibrank %d" % i()),
+        (bibsort, "bibsort -u admin -R"),
+        (bibsort, "bibsort %d" % i()),
+        (oairepositoryupdater, "oairepositoryupdater -u admin"),
+        (oairepositoryupdater, "oairepositoryupdater %d" % i()),
+        (bibupload, "bibupload %d" % i()),
+    ):
+        if run_py_func(*cmd, passthrough=True).exit_code:
+            print("ERROR: failed execution of", *cmd)
             sys.exit(1)
     print(">>> Demo records loaded successfully.")
 

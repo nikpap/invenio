@@ -19,9 +19,14 @@
 
 """Various utility functions for use across the workflows module."""
 
-from invenio.ext.cache import cache
-
 import msgpack
+
+from flask import current_app, jsonify
+from functools import wraps
+from six import text_type
+
+from invenio.base.helpers import unicodifier
+from invenio.ext.cache import cache
 
 from .registry import workflows
 
@@ -43,7 +48,7 @@ def convert_marcxml_to_bibfield(marcxml, model=None):
     if not model:
         model = ["__default__"]
 
-    if isinstance(marcxml, unicode):
+    if isinstance(marcxml, text_type):
         marcxml = marcxml.encode(errors='ignore')
     return Reader.translate(marcxml,
                             SmartJson,
@@ -161,7 +166,6 @@ def _sort_from_cache(name):
             if results:
                 return msgpack.loads(results)[name]
         except Exception:
-            from flask import current_app
             current_app.logger.exception(
                 "Invalid format for object {0}: {1}".format(
                     item.id,
@@ -420,14 +424,14 @@ def get_rendered_task_results(obj):
     """Return a list of rendered results from BibWorkflowObject task results."""
     from flask import render_template
 
-    results = []
-    for res in obj.get_tasks_results().values():
+    results = {}
+    for name, res in obj.get_tasks_results().items():
         for result in res:
-            results.append(render_template(
+            results[name] = render_template(
                 result.get("template", "workflows/results/default.html"),
                 results=result,
                 obj=obj
-            ))
+            )
     return results
 
 
@@ -454,10 +458,20 @@ def get_previous_next_objects(object_list, current_object_id):
     return previous_object_id, next_object_id
 
 
+def get_task_history(last_task):
+    """Append last task to task history."""
+    if hasattr(last_task, 'branch') and last_task.branch:
+        return
+    elif hasattr(last_task, 'hide') and last_task.hide:
+        return
+    else:
+        return get_func_info(last_task)
+
+
 def get_func_info(func):
     """Retrieve a function's information."""
     name = func.func_name
-    doc = func.func_doc
+    doc = func.func_doc or ""
     try:
         nicename = func.description
     except AttributeError:
@@ -472,13 +486,14 @@ def get_func_info(func):
     varnames = func.func_code.co_freevars
     if closure:
         for index, arg in enumerate(closure):
-            parameters.append((str(varnames[index]), str(arg.cell_contents)))
-    return {
+            if not callable(arg.cell_contents):
+                parameters.append((varnames[index], arg.cell_contents))
+    return unicodifier({
         "nicename": nicename,
         "doc": doc,
         "parameters": parameters,
         "name": name
-    }
+    })
 
 
 def get_workflow_info(func_list):
@@ -490,3 +505,18 @@ def get_workflow_info(func_list):
         else:
             funcs.append(get_func_info(item))
     return funcs
+
+
+def alert_response_wrapper(func):
+    """Wrap given function with wrapper to return JSON for alerts."""
+    @wraps(func)
+    def inner(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as error:
+            current_app.logger.exception(error)
+            return jsonify({
+                "category": "danger",
+                "message": "Error: {0}".format(error)
+            })
+    return inner

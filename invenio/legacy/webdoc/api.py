@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # This file is part of Invenio.
-# Copyright (C) 2007, 2008, 2009, 2010, 2011, 2014 CERN.
+# Copyright (C) 2007, 2008, 2009, 2010, 2011, 2014, 2015 CERN.
 #
 # Invenio is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -30,7 +30,7 @@ from six import iteritems
 from . import registry
 
 from invenio.config import \
-     CFG_PREFIX, \
+     CFG_LOCALEDIR, \
      CFG_SITE_LANG, \
      CFG_SITE_LANGS, \
      CFG_SITE_NAME, \
@@ -666,8 +666,11 @@ def transform(webdoc_source, verbose=0, req=None, languages=CFG_SITE_LANGS):
         ## Eg. replace <CFG_SITE_URL> with 'http://cds.cern.ch/':
         for defined_tag, value in iteritems(defined_tags):
             if defined_tag.upper() == '<CFG_SITE_NAME_INTL>':
+                vget = value.get(ln, value['en'])
+                if isinstance(vget, str):
+                    vget = vget.decode('utf-8')
                 localized_webdoc = localized_webdoc.replace(defined_tag, \
-                                                            value.get(ln, value['en']))
+                                                            vget)
             else:
                 localized_webdoc = localized_webdoc.replace(defined_tag, value)
 
@@ -736,7 +739,8 @@ def get_mo_last_modification():
     """
     # Take one of the mo files. They are all installed at the same
     # time, so last modication date should be the same
-    mo_file = '%s/share/locale/%s/LC_MESSAGES/invenio.mo' % (CFG_PREFIX, CFG_SITE_LANG)
+    mo_file = os.path.join(CFG_LOCALEDIR, CFG_SITE_LANG, 'LC_MESSAGES',
+                           'invenio.mo')
 
     if os.path.exists(os.path.abspath(mo_file)):
         return os.stat(mo_file).st_mtime

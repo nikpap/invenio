@@ -1,5 +1,5 @@
 # This file is part of Invenio.
-# Copyright (C) 2009, 2010, 2011, 2012, 2014 CERN.
+# Copyright (C) 2009, 2010, 2011, 2012, 2014, 2015 CERN.
 #
 # Invenio is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -36,7 +36,6 @@ from invenio.config import (CFG_SITE_LANG,
 from invenio.legacy.oaiharvest.config import CFG_OAI_POSSIBLE_POSTMODES
 from invenio.legacy.bibrank.adminlib import (write_outcome,
                                              addadminbox)
-from invenio.legacy.dbquery import deserialize_via_marshal
 
 from invenio.legacy.oaiharvest.dblayer import (
     get_month_logs_size, get_history_entries_for_day, get_day_logs_size,
@@ -54,6 +53,8 @@ from invenio.utils.url import create_html_link
 from invenio.legacy.bibsched.bibtask import (
     task_low_level_submission, task_log_path)
 from invenio.legacy.webuser import get_user_info, get_email
+
+from invenio.utils.serializers import deserialize_via_marshal
 
 webstyle_templates = invenio.legacy.template.load('webstyle')
 oaiharvest_templates = invenio.legacy.template.load('oaiharvest')
@@ -242,14 +243,14 @@ def perform_request_editsource(oai_src_id=None, oai_src_name='',
                 oai_src_post = []
 
             oai_src = OaiHARVEST.query.get(oai_src_id)
-            oai_src.setspecs = " ".join(oai_src_sets)
-            oai_src.baseurl = oai_src_baseurl
-            oai_src.name = oai_src_name
-            oai_src.metadataprefix = oai_src_prefix
-            oai_src.postprocess = "-".join(oai_src_post)
+            oai_src.setspecs = " ".join(oai_src_sets).strip()
+            oai_src.baseurl = oai_src_baseurl.strip()
+            oai_src.name = oai_src_name.strip()
+            oai_src.metadataprefix = oai_src_prefix.strip()
+            oai_src.postprocess = "-".join(oai_src_post).strip()
             oai_src.arguments = oai_src_args
-            oai_src.comment = oai_src_comment
-            oai_src.workflows = oai_src_workflow
+            oai_src.comment = oai_src_comment.strip()
+            oai_src.workflows = oai_src_workflow.strip()
             oai_src.save()
             # OAI source modified!
             show_form = False
@@ -358,15 +359,15 @@ def perform_request_addsource(oai_src_name=None, oai_src_baseurl='',
             else:
                 oai_src_lastrun = datetime.datetime.now()
 
-            res = OaiHARVEST(name=oai_src_name,
-                             baseurl=oai_src_baseurl,
-                             metadataprefix=oai_src_prefix,
+            res = OaiHARVEST(name=oai_src_name.strip(),
+                             baseurl=oai_src_baseurl.strip(),
+                             metadataprefix=oai_src_prefix.strip(),
                              lastrun=oai_src_lastrun,
                              postprocess="-".join(oai_src_post),
-                             comment=oai_src_comment,
-                             setspecs=" ".join(oai_src_sets),
+                             comment=oai_src_comment.strip(),
+                             setspecs=" ".join(oai_src_sets).strip(),
                              arguments=oai_src_args,
-                             workflows=oai_src_workflow)
+                             workflows=oai_src_workflow.strip())
             res.save()
             # OAI source added!
             show_form = False

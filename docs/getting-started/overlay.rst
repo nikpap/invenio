@@ -61,9 +61,10 @@ solely required for development purposes.
     $ python --version
     Python 2.7.5+
     $ sudo apt-get update
-    $ sudo apt-get install build-essential redis-server \
+    $ sudo apt-get install build-essential git redis-server \
                            libmysqlclient-dev libxml2-dev libxslt-dev \
                            libjpeg-dev libfreetype6-dev libtiff-dev \
+                           libffi-dev libssl-dev \
                            software-properties-common python-dev \
                            virtualenvwrapper
     $ sudo pip install -U virtualenvwrapper pip
@@ -135,25 +136,23 @@ it later on. Here is its minimal content.
         }
     )
 
-Now we can install it in editable mode (``-e``) meaning you don't have to
+Now we can install it in editable mode (``-e``), meaning you don't have to
 reinstall it after each change
 
 .. code-block:: console
 
     (myoverlay)$ pip install -e .
 
-This way will use the latest invenio version published on PyPI, as a developer,
-you may want to use the development version of Invenio. To do so, create a file
-called ``requirements.txt``.
+This will fetch the latest Invenio version published on PyPI. As a developer,
+you may instead want to use the development version of Invenio from GitHub. To
+do so, create a file called ``requirements.txt`` with the following content:
 
 .. code-block:: text
 
-    git://github.com/inveniosoftware/invenio@pu#egg=Invenio-dev
+    git+git://github.com/inveniosoftware/invenio@pu#egg=Invenio-dev
     -e .
 
-The installation process changes a little bit. It still contains the ``-e .``
-command we used before but specify the github version of Invenio instead of the
-PyPI one.
+and install using:
 
 .. code-block:: console
 
@@ -223,8 +222,8 @@ the application).
     (myoverlay)$ inveniomanage config set CFG_DATABASE_NAME mysql-database
     (myoverlay)$ inveniomanage config set CFG_DATABASE_USER mysql-user
     # HOST configuration (for redirects, etc.)
-    (myoverlay)$ inveniomanage config set CFG_SITE_URL http://0.0.0.0:4000
-    (myoverlay)$ inveniomanage config set CFG_SITE_SECURE_URL https://0.0.0.0:4000
+    (myoverlay)$ inveniomanage config set CFG_SITE_URL http://invenio.example.com
+    (myoverlay)$ inveniomanage config set CFG_SITE_SECURE_URL https://invenio.example.com
     (myoverlay)$ inveniomanage config set DEBUG True
     (myoverlay)$ inveniomanage config set ASSETS_DEBUG True
 

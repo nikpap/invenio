@@ -19,10 +19,10 @@
 
 """WebSubmit database models."""
 
-# General imports.
 from invenio.ext.sqlalchemy import db
 
-# Create your models here.
+from sqlalchemy.dialects import mysql
+from sqlalchemy.schema import Index
 
 
 class SbmACTION(db.Model):
@@ -45,7 +45,7 @@ class SbmALLFUNCDESCR(db.Model):
     """Represent a SbmALLFUNCDESCR record."""
 
     __tablename__ = 'sbmALLFUNCDESCR'
-    # FIX ME pk
+    # FIXME pk
     function = db.Column(db.String(40), nullable=False, server_default='',
                          primary_key=True)
     description = db.Column(db.TinyText, nullable=True)
@@ -131,19 +131,6 @@ class SbmCOLLECTIONSbmCOLLECTION(db.Model):
     catalogue_order = db.Column(db.Integer(11), nullable=False,
                                 server_default='0')
 
-    son = db.relationship(
-        SbmCOLLECTION,
-        backref=db.backref('father', uselist=False),
-        single_parent=True,
-        primaryjoin="and_(SbmCOLLECTIONSbmCOLLECTION.id_son==SbmCOLLECTION.id) "
-    )
-    father = db.relationship(
-        SbmCOLLECTION,
-        backref=db.backref('son', uselist=False),
-        single_parent=True,
-        primaryjoin="and_(SbmCOLLECTIONSbmCOLLECTION.id_father==SbmCOLLECTION.id) "
-    )
-
     @db.hybrid_property
     def id_father(self):
         """Get id_father."""
@@ -153,6 +140,21 @@ class SbmCOLLECTIONSbmCOLLECTION(db.Model):
     def id_father(self, value):
         """Set id_father."""
         self._id_father = value or None
+
+    son = db.relationship(
+        SbmCOLLECTION,
+        backref=db.backref('father', uselist=False),
+        single_parent=True,
+        primaryjoin="and_("
+        "SbmCOLLECTIONSbmCOLLECTION.id_son==SbmCOLLECTION.id) "
+    )
+    father = db.relationship(
+        SbmCOLLECTION,
+        backref=db.backref('son', uselist=False),
+        single_parent=True,
+        primaryjoin="and_("
+        "SbmCOLLECTIONSbmCOLLECTION.id_father==SbmCOLLECTION.id) "
+    )
 
 
 class SbmDOCTYPE(db.Model):
@@ -292,7 +294,7 @@ class SbmFIELDDESC(db.Model):
     fddfi2 = db.Column(db.Text, nullable=True)
     cookie = db.Column(db.Integer(11), nullable=True,
                        server_default='0')
-    #field = db.relationship(SbmFIELD, backref='fielddescs')
+    # field = db.relationship(SbmFIELD, backref='fielddescs')
 
 
 class SbmFORMATEXTENSION(db.Model):
@@ -300,10 +302,21 @@ class SbmFORMATEXTENSION(db.Model):
     """Represents a SbmFORMATEXTENSION record."""
 
     __tablename__ = 'sbmFORMATEXTENSION'
-    FILE_FORMAT = db.Column(db.Text(50), nullable=False,
-                            primary_key=True)
-    FILE_EXTENSION = db.Column(db.Text(10), nullable=False,
-                               primary_key=True)
+
+    id = db.Column(db.Integer(), nullable=False,
+                   primary_key=True, autoincrement=True)
+    FILE_FORMAT = db.Column(
+        db.Text().with_variant(mysql.TEXT(50), 'mysql'),
+        nullable=False)
+    FILE_EXTENSION = db.Column(
+        db.Text().with_variant(mysql.TEXT(10), 'mysql'),
+        nullable=False)
+
+
+Index('sbmformatextension_file_format_idx',
+      SbmFORMATEXTENSION.FILE_FORMAT, mysql_length=50)
+Index('sbmformatextension_file_extension_idx',
+      SbmFORMATEXTENSION.FILE_EXTENSION, mysql_length=10)
 
 
 class SbmFUNCTIONS(db.Model):
@@ -338,10 +351,19 @@ class SbmGFILERESULT(db.Model):
     """Represents a SbmGFILERESULT record."""
 
     __tablename__ = 'sbmGFILERESULT'
-    FORMAT = db.Column(db.Text(50), nullable=False,
-                       primary_key=True)
-    RESULT = db.Column(db.Text(50), nullable=False,
-                       primary_key=True)
+
+    id = db.Column(db.Integer(), nullable=False,
+                   primary_key=True, autoincrement=True)
+    FORMAT = db.Column(
+        db.Text().with_variant(db.Text(50), 'mysql'),
+        nullable=False)
+    RESULT = db.Column(
+        db.Text().with_variant(db.Text(50), 'mysql'),
+        nullable=False)
+
+
+Index('sbmgfileresult_format_idx', SbmGFILERESULT.FORMAT, mysql_length=50)
+Index('sbmgfileresult_result_idx', SbmGFILERESULT.RESULT, mysql_length=50)
 
 
 class SbmIMPLEMENT(db.Model):
@@ -480,7 +502,7 @@ class SbmSUBMISSIONS(db.Model):
                        autoincrement=True)
 
 
-__all__ = ['SbmACTION',
+__all__ = ('SbmACTION',
            'SbmALLFUNCDESCR',
            'SbmAPPROVAL',
            'SbmCATEGORIES',
@@ -503,4 +525,4 @@ __all__ = ['SbmACTION',
            'SbmPUBLICATIONCOMM',
            'SbmPUBLICATIONDATA',
            'SbmREFEREES',
-           'SbmSUBMISSIONS']
+           'SbmSUBMISSIONS')

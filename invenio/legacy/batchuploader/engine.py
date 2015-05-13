@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
-# Copyright (C) 2010, 2011, 2012, 2013, 2014 CERN.
+# Copyright (C) 2010, 2011, 2012, 2013, 2014, 2015 CERN.
 #
 # Invenio is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -29,7 +29,7 @@ import time
 import tempfile
 import re
 
-from invenio.legacy.dbquery import run_sql, Error
+from invenio.legacy.dbquery import run_sql
 from invenio.modules.access.engine import acc_authorize_action
 from invenio.legacy.webuser import collect_user_info, page_not_authorized
 from invenio.config import CFG_BINDIR, CFG_TMPSHAREDDIR, CFG_LOGDIR, \
@@ -38,7 +38,7 @@ from invenio.config import CFG_BINDIR, CFG_TMPSHAREDDIR, CFG_LOGDIR, \
                             CFG_OAI_ID_FIELD, CFG_BATCHUPLOADER_DAEMON_DIR, \
                             CFG_BATCHUPLOADER_WEB_ROBOT_RIGHTS, \
                             CFG_BATCHUPLOADER_WEB_ROBOT_AGENTS, \
-                            CFG_PREFIX, CFG_SITE_LANG
+                            CFG_SITE_LANG
 from invenio.utils.text import encode_for_xml
 from invenio.legacy.bibsched.bibtask import task_low_level_submission
 from invenio.base.i18n import gettext_set_language
@@ -58,6 +58,8 @@ try:
     from six import StringIO
 except ImportError:
     from StringIO import StringIO
+
+from sqlalchemy.exc import SQLAlchemyError as Error
 
 PERMITTED_MODES = ['-i', '-r', '-c', '-a', '-ir',
                    '--insert', '--replace', '--correct', '--append']
@@ -377,7 +379,7 @@ def get_user_metadata_uploads(req):
                             s.status \
                             FROM hstBATCHUPLOAD h INNER JOIN schTASK s \
                             ON h.id_schTASK = s.id \
-                            WHERE h.user=%s and h.batch_mode="metadata"
+                            WHERE h.user=%s and h.batch_mode='metadata'
                             ORDER BY h.submitdate DESC""", (user_info['nickname'],))
     return upload_list
 
@@ -389,7 +391,7 @@ def get_user_document_uploads(req):
                           s.status \
                           FROM hstBATCHUPLOAD h INNER JOIN schTASK s \
                           ON h.id_schTASK = s.id \
-                          WHERE h.user=%s and h.batch_mode="document"
+                          WHERE h.user=%s and h.batch_mode='document'
                           ORDER BY h.submitdate DESC""", (user_info['nickname'],))
     return upload_list
 
@@ -398,9 +400,7 @@ def get_daemon_doc_files():
     files = {}
     for folder in ['/revise', '/append']:
         try:
-            daemon_dir = CFG_BATCHUPLOADER_DAEMON_DIR[0] == '/' and CFG_BATCHUPLOADER_DAEMON_DIR \
-                         or CFG_PREFIX + '/' + CFG_BATCHUPLOADER_DAEMON_DIR
-            directory = daemon_dir + '/documents' + folder
+            directory = os.path.join(CFG_BATCHUPLOADER_DAEMON_DIR, 'documents', folder)
             files[directory] = [(filename, []) for filename in os.listdir(directory) if os.path.isfile(os.path.join(directory, filename))]
             for file_instance, info in files[directory]:
                 stat_info = os.lstat(os.path.join(directory, file_instance))
@@ -419,9 +419,7 @@ def get_daemon_meta_files():
     files = {}
     for folder in ['/correct', '/replace', '/insert', '/append']:
         try:
-            daemon_dir = CFG_BATCHUPLOADER_DAEMON_DIR[0] == '/' and CFG_BATCHUPLOADER_DAEMON_DIR \
-                         or CFG_PREFIX + '/' + CFG_BATCHUPLOADER_DAEMON_DIR
-            directory = daemon_dir + '/metadata' + folder
+            directory = os.path.join(CFG_BATCHUPLOADER_DAEMON_DIR, 'metadata', folder)
             files[directory] = [(filename, []) for filename in os.listdir(directory) if os.path.isfile(os.path.join(directory, filename))]
             for file_instance, info in files[directory]:
                 stat_info = os.lstat(os.path.join(directory, file_instance))

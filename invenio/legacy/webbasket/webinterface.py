@@ -33,6 +33,7 @@ from invenio.base.globals import cfg
 from invenio.base.i18n import gettext_set_language
 from invenio.legacy.webpage import page
 from invenio.legacy.webuser import getUid, page_not_authorized, isGuestUser
+from invenio.config import CFG_BASKETSDIR
 from invenio.legacy.webbasket.api import \
      check_user_can_comment, \
      check_sufficient_rights, \
@@ -170,15 +171,14 @@ class WebInterfaceBasketCommentsFiles(WebInterfaceDirectory):
         if not argd['file'] is None:
             # Prepare path to file on disk. Normalize the path so that
             # ../ and other dangerous components are removed.
-            path = os.path.abspath(CFG_PREFIX + '/var/data/baskets/comments/' + \
-                                   str(argd['bskid']) + '/'  + str(argd['recid']) + '/' + \
-                                   str(argd['uid']) + '/' + argd['type'] + '/' + \
-                                   argd['file'])
+            path = os.path.abspath(os.path.join(CFG_BASKETSDIR, 'comments',
+                                   str(argd['bskid']), str(argd['recid']),
+                                   str(argd['uid']), argd['type'], argd['file']))
 
             # Check that we are really accessing attachements
             # directory, for the declared basket and record.
-            if path.startswith(CFG_PREFIX + '/var/data/baskets/comments/' + \
-                               str(argd['bskid']) + '/' + str(argd['recid'])) and \
+            if path.startswith(os.path.join(CFG_BASKETSDIR, 'comments',
+                               str(argd['bskid']), str(argd['recid']))) and \
                                os.path.exists(path):
                 return stream_file(req, path)
 

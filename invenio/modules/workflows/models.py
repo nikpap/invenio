@@ -26,8 +26,9 @@ import tempfile
 from datetime import datetime
 
 from invenio.base.globals import cfg
+from invenio.base.helpers import unicodifier
 from invenio.base.utils import classproperty
-from invenio.ext.logging import deprecated
+from invenio.utils.deprecation import deprecated, RemovedInInvenio22Warning
 from invenio.ext.sqlalchemy import db
 from invenio.ext.sqlalchemy.utils import session_manager
 
@@ -55,7 +56,7 @@ class ObjectVersion(object):
 
     @classproperty
     @deprecated("Please use ObjectVersion.COMPLETED "
-                "instead of ObjectVersion.FINAL")
+                "instead of ObjectVersion.FINAL", RemovedInInvenio22Warning)
     def FINAL(cls):
         return cls.COMPLETED
 
@@ -381,18 +382,6 @@ class BibWorkflowObject(db.Model):
             pass
         return
 
-    def update_task_history(self, last_task):
-        """Append last task to task history."""
-        from .utils import get_func_info
-        if "_task_history" not in self.extra_data:
-            self.extra_data["_task_history"] = []
-        if hasattr(last_task, 'branch') and last_task.branch:
-            return
-        elif hasattr(last_task, 'hide') and last_task.hide:
-            return
-        else:
-            self.extra_data["_task_history"].append(get_func_info(last_task))
-
     def get_formatted_data(self, of="hd"):
         """Get the formatted representation for this object."""
         from .registry import workflows
@@ -574,7 +563,7 @@ class BibWorkflowObject(db.Model):
     def get_action_message(self):
         """Retrieve the currently assigned widget, if any."""
         try:
-            return self.get_extra_data()["_message"]
+            return unicodifier(self.get_extra_data()["_message"])
         except KeyError:
             # No widget
             return ""
@@ -688,6 +677,20 @@ class BibWorkflowObject(db.Model):
         except KeyError:
             # Assume old version "task_counter"
             return extra_data["task_counter"]
+
+    def get_current_task_info(self):
+        """Return a dictionary of current task function info for this object."""
+        from .utils import get_workflow_definition, get_func_info
+
+        task_pointer = self.get_current_task()
+        name = self.get_workflow_name()
+        if not name:
+            return ""
+        current_task = get_workflow_definition(name)
+        for step in task_pointer:
+            current_task = current_task[step]
+            if callable(current_task):
+                return get_func_info(current_task)
 
     def save_to_file(self, directory=None,
                      prefix="workflow_object_data_", suffix=".obj"):
